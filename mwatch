@@ -9,7 +9,7 @@
 
 
 #BUGS
-# heading does not scroll tritght to left yet!
+# heading does not scroll right to left yet!
 # resizing terminal crashes.  Possibly some curses/mosquitto interaction.
 
 
@@ -22,7 +22,7 @@ from curses.ascii import isprint
 import time
 import datetime
 
-version_number = 0.4
+version_number = 0.5
 topiclist = []
 count = []
 numtopics = 0
@@ -41,7 +41,7 @@ message_col = topic_size
 def usage():
     print "usage: mwatch [options]"  #[hostname[:port]] [topics]" 
     print "Watch topics change from an MQTT broker."
-    print
+    print 
     print "   -u --hostname HOSTNAME set hostname for broker (default localhost)"
     print "   -p --port PORT         set port for mqtt broker (default 1883)"
     print "   -t --topics TOPICS     set topics to watch (default /#)"
@@ -223,37 +223,39 @@ stdscr.keypad(1)
 stdscr.addstr("MQTT watch ", curses.A_REVERSE)
 stdscr.chgat(-1,curses.A_REVERSE)
 stdscr.addstr(curses.LINES-1,curses.COLS-45,"page-up, page-dn, cursor arrows, q to Quit")
-
-stats = curses.newwin(curses.LINES-2,curses.COLS,1,0)
-stats_txt = curses.newpad(2000,2000)
-stats.box()
 page = curses.LINES - 3
+stats = curses.newwin(curses.LINES-2,curses.COLS,1,0)
+stats.box()
+header_txt = curses.newpad(1,2000)
+stats_txt = curses.newpad(2000,2000)
 stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
 stdscr.noutrefresh()
 stats.noutrefresh()
 
-stats.addstr(1, topic_col+2, "TOPIC", curses.A_UNDERLINE)
+
+header_txt.addstr(0, topic_col+1, "TOPIC", curses.A_UNDERLINE)
 if retained_flag:
     qos_col = qos_col + 10
     timestamp_col = timestamp_col + 10
     count_col = count_col + 10
     message_col = message_col + 10
     if curses.COLS > retained_col + 2:
-        stats.addstr(1, retained_col+2, "RETAINED", curses.A_UNDERLINE)
+        header_txt.addstr(0, retained_col+1, "RETAINED", curses.A_UNDERLINE)
 if qos_flag:
     timestamp_col = timestamp_col + 5
     count_col = count_col + 5
     message_col = message_col + 5
-    stats.addstr(1, qos_col+2, "QOS", curses.A_UNDERLINE)
+    header_txt.addstr(0, qos_col+1, "QOS", curses.A_UNDERLINE)
 if count_flag:
     timestamp_col = timestamp_col + 7
     message_col = message_col + 7
-    stats.addstr(1, count_col+2, "COUNT", curses.A_UNDERLINE)
+    header_txt.addstr(0, count_col+1, "COUNT", curses.A_UNDERLINE)
 if timestamp_flag:
     message_col = message_col + 28
-    stats.addstr(1, timestamp_col+2, "RECEIVED TIMESTAMP", curses.A_UNDERLINE)
+    header_txt.addstr(0, timestamp_col+1, "RECEIVED TIMESTAMP", curses.A_UNDERLINE)
 if curses.COLS > message_col + 10:
-    stats.addstr(1, message_col+2, "MESSAGE", curses.A_UNDERLINE)
+    header_txt.addstr(0, message_col+1, "MESSAGE", curses.A_UNDERLINE)
+header_txt.refresh(0, 0, 2, 1, 2, curses.COLS-4)
 stats.noutrefresh()
 curses.doupdate()
 
@@ -267,41 +269,48 @@ while client.loop(0) == 0:
         if pos > numtopics:
             pos = numtopics
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
         curses.doupdate()
     if key == curses.KEY_UP:
         pos = pos - 1
         if pos < 0:
             pos = 0
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
         curses.doupdate()
     if key == curses.KEY_NPAGE:
         pos = pos + page - 2
         if pos > numtopics:
             pos = numtopics
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
         curses.doupdate()
     if key == curses.KEY_PPAGE:
         pos = pos - page + 2
         if pos < 0:
             pos = 0
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
         curses.doupdate()
     if key == curses.KEY_LEFT:
         col = col - 1
         if col < 0:
             col = 0
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
         curses.doupdate()
     if key == curses.KEY_RIGHT:
         col = col + 1
         if col < 0:
             col = 1000
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
         curses.doupdate()
     if key == curses.KEY_HOME:
         pos = 0
         col = 0
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
         curses.doupdate()
     if key == curses.KEY_RESIZE:    #Resizing the terminal screen crashes this program.  
         l, c = getTerminalSize()    #It seems to be something to do with calling the mosquitto library in the above while loop.  
