@@ -9,7 +9,6 @@
 
 
 #BUGS
-# heading does not scroll right to left yet!
 # resizing terminal crashes.  Possibly some curses/mosquitto interaction.
 
 
@@ -55,8 +54,17 @@ def usage():
     print "   -v --version           show version information"
     print "By Dennis Sell -- 2013"
 
+
 def version():
     print "version: " + str(version_number)
+
+
+def show_help():
+#    print ""
+    while True:
+        key = stdscr.getch()
+        if key == ord("q"):
+            break
 
 
 def on_connect(mosq, userdata, rc):
@@ -65,12 +73,18 @@ def on_connect(mosq, userdata, rc):
     stdscr.noutrefresh()
     curses.doupdate()
 
+
 def isprintable(v):
     ret = True
     for char in v:
         if not curses.ascii.isprint(char):    
             ret = False
     return ret
+
+
+def printable(input):
+    return ''.join(char for char in input if isprint(char))
+
 
 def on_message(mosq, userdata, msg):
     global numtopics
@@ -87,13 +101,14 @@ def on_message(mosq, userdata, msg):
         stdscr.addstr(0,60,"Topic count %s" % numtopics, curses.A_REVERSE)
     offset = topiclist.index(msg.topic) 
     count[offset] = count[offset] + 1
-    stats_txt.addstr(offset, message_col, "                                                                                                                                 ")
+    stats_txt.move(offset, message_col)
+    stats_txt.clrtoeol()
     stats_txt.addstr(offset, topic_col, msg.topic)
     if isprintable(msg.payload) and not hex_flag:
         stats_txt.addstr(offset, message_col, msg.payload)
     else:
-        #  v = " ".join([hex(ord(a)) for a in msg.payload])  #Does individual bytes.
-        stats_txt.addstr(offset, message_col, "####  NON-ALPHANUMERIC  #### --> 0x" + msg.payload.encode('hex')) #v)
+        v = " ".join([hex(ord(a)) for a in msg.payload])  #Does individual bytes.
+        stats_txt.addstr(offset, message_col, "####  NON-ALPHANUMERIC  #### --> 0x" + msg.payload.encode('hex'))
     if msg.retain:
         retained_value = "True "
     else:
@@ -106,7 +121,7 @@ def on_message(mosq, userdata, msg):
         stats_txt.addstr(offset, count_col, str(count[offset]))
     if timestamp_flag:
         stats_txt.addstr(offset, timestamp_col, str(datetime.datetime.now()))
-    stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
+    stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
     curses.doupdate()
 
 def getTerminalSize():
@@ -222,13 +237,13 @@ stdscr.keypad(1)
 # draw basic screen
 stdscr.addstr("MQTT watch ", curses.A_REVERSE)
 stdscr.chgat(-1,curses.A_REVERSE)
-stdscr.addstr(curses.LINES-1,curses.COLS-45,"page-up, page-dn, cursor arrows, q to Quit")
+stdscr.addstr(curses.LINES-1,curses.COLS-57,"page-up, page-dn, cursor arrows, ? for help, q to Quit")
 page = curses.LINES - 3
 stats = curses.newwin(curses.LINES-2,curses.COLS,1,0)
 stats.box()
 header_txt = curses.newpad(1,2000)
 stats_txt = curses.newpad(2000,2000)
-stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
+stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
 stdscr.noutrefresh()
 stats.noutrefresh()
 
@@ -255,7 +270,7 @@ if timestamp_flag:
     header_txt.addstr(0, timestamp_col+1, "RECEIVED TIMESTAMP", curses.A_UNDERLINE)
 if curses.COLS > message_col + 10:
     header_txt.addstr(0, message_col+1, "MESSAGE", curses.A_UNDERLINE)
-header_txt.refresh(0, 0, 2, 1, 2, curses.COLS-4)
+header_txt.refresh(0, 0, 2, 1, 2, curses.COLS-3)
 stats.noutrefresh()
 curses.doupdate()
 
@@ -264,53 +279,65 @@ while client.loop(0) == 0:
     key = stdscr.getch()
     if key == ord("q"):
         break
+    if key == ord("?"):
+        show_help()
     if key == curses.KEY_DOWN:
         pos = pos + 1
         if pos > numtopics:
             pos = numtopics
-        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
-        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
     if key == curses.KEY_UP:
         pos = pos - 1
         if pos < 0:
             pos = 0
-        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
-        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
     if key == curses.KEY_NPAGE:
         pos = pos + page - 2
         if pos > numtopics:
             pos = numtopics
-        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
-        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
     if key == curses.KEY_PPAGE:
         pos = pos - page + 2
         if pos < 0:
             pos = 0
-        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
-        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
     if key == curses.KEY_LEFT:
         col = col - 1
         if col < 0:
             col = 0
-        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
-        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
     if key == curses.KEY_RIGHT:
         col = col + 1
-        if col < 0:
-            col = 1000
-        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
-        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
+        if col > 2003-curses.COLS:
+            col = 2003-curses.COLS
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
     if key == curses.KEY_HOME:
         pos = 0
         col = 0
-        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-4)
-        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-4)
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == ord("b"):
+        col = 0
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == ord("e"):
+        col = 2003 - curses.COLS
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
     if key == curses.KEY_RESIZE:    #Resizing the terminal screen crashes this program.  
         l, c = getTerminalSize()    #It seems to be something to do with calling the mosquitto library in the above while loop.  
