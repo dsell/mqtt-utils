@@ -60,11 +60,24 @@ def version():
 
 
 def show_help():
-#    print ""
+    help_cols = curses.COLS/2
+    help_lines = curses.LINES/2
+    help_win = curses.newwin(20, 50, help_lines-10, help_cols-25)
+    help_win.box()
+    help_win.addstr(1, 1, "Key Commands")
+    help_win.addstr(3, 1, "b - ")
+    help_win.addstr(4, 1, "e - ")
+    help_win.noutrefresh()
+    curses.doupdate()
     while True:
         key = stdscr.getch()
         if key == ord("q"):
             break
+    help_win.erase()
+    del help_win
+    stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+    stdscr.nooutrefresh()
+    curses.doupdate()
 
 
 def on_connect(mosq, userdata, rc):
