@@ -6,7 +6,7 @@ import mosquitto
 
 
 topiclist = []
-broker = "dsell.chickenkiller.com"
+broker = "127.0.0.1"
 topics = "/#"
 
 def on_connect(mosq, userdata, rc):
