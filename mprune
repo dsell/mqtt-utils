@@ -36,8 +36,8 @@ client.subscribe(topics)
 
 
 timer = 3000        #Crude method of waiting for subscriptions to come in.  This could be improved.
+print "Collecting topics"
 while timer > 0:
-    print "Collecting topics %s", timer
     client.loop(0)
     timer = timer -1
     pass

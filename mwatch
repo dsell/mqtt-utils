@@ -128,10 +128,10 @@ def on_message(mosq, userdata, msg):
     stats_txt.clrtoeol()
     stats_txt.addstr(offset, topic_col, msg.topic)
     if isprintable(msg.payload) and not hex_flag:
-        stats_txt.addstr(offset, message_col, msg.payload)
+        stats_txt.addstr(offset, message_col, msg.payload[0:1900])
     else:
         v = " ".join([hex(ord(a)) for a in msg.payload])  #Does individual bytes.
-        stats_txt.addstr(offset, message_col, "####  NON-ALPHANUMERIC  #### --> 0x" + msg.payload.encode('hex'))
+        stats_txt.addstr(offset, message_col, "####  NON-ALPHANUMERIC  #### --> 0x" + msg.payload.encode('hex')[0:1900])
     if msg.retain:
         retained_value = "True "
     else:
