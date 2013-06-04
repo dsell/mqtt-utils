@@ -62,11 +62,21 @@ def version():
 def show_help():
     help_cols = curses.COLS/2
     help_lines = curses.LINES/2
-    help_win = curses.newwin(20, 50, help_lines-10, help_cols-25)
+    help_win = curses.newwin(24, 50, help_lines-12, help_cols-25)
     help_win.box()
-    help_win.addstr(1, 1, "Key Commands")
-    help_win.addstr(3, 1, "b - ")
-    help_win.addstr(4, 1, "e - ")
+    help_win.addstr(1, 1, "Key Commands", curses.A_UNDERLINE)
+    help_win.addstr(3, 1, "[Home]        - Jump to top left")
+    help_win.addstr(4, 1, "b             - Jump to begining of line")
+    help_win.addstr(5, 1, "e             - Jump to end of line")
+    help_win.addstr(6, 1, "[Right Arrow] - Scroll to right")
+    help_win.addstr(7, 1, "[Left Arrow]  - Scroll to left")
+    help_win.addstr(8, 1, "[Up Arrow]    - Scroll up")
+    help_win.addstr(9, 1, "[Down Arrow]  - Scroll down")
+    help_win.addstr(10, 1, "[Page Up]     - Page up")
+    help_win.addstr(11, 1, "[Page Down]   - Page down")
+    help_win.addstr(13, 1, "Retained flag == True implies the message was")
+    help_win.addstr(14, 1, "sent before mwatch connected to the broker.  ")
+    help_win.addstr(16, 1, "q - To exit help.")
     help_win.noutrefresh()
     curses.doupdate()
     while True:
@@ -136,6 +146,7 @@ def on_message(mosq, userdata, msg):
         stats_txt.addstr(offset, timestamp_col, str(datetime.datetime.now()))
     stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
     curses.doupdate()
+
 
 def getTerminalSize():
     """
@@ -238,6 +249,14 @@ client.subscribe(topics, qos=qos)
 
 # initialize curses
 stdscr = curses.initscr()
+if curses.COLS < 95:
+    curses.endwin()
+    print "mwatch requires a minimum terminal width of 95 columns."    
+    sys.exit(2)
+if curses.LINES < 7:
+    curses.endwin()
+    print "mwatch requires a minimum terminal heigth of 7 rows."    
+    sys.exit(2)
 stdscr.nodelay(1)
 curses.curs_set(0)
 if curses.has_colors():
