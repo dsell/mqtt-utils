@@ -1,0 +1,44 @@
+#!/usr/bin/python
+
+
+import sys
+import mosquitto
+
+
+topiclist = []
+broker = "dsell.chickenkiller.com"
+topics = "/#"
+
+def on_connect(mosq, userdata, rc):
+    print "Connected to %s", broker
+
+def on_message(mosq, userdata, msg):
+    if msg.topic not in topiclist and msg.retain:
+        topiclist.append(msg.topic)
+
+if len(sys.argv) == 2:
+    broker = sys.argv[1]
+if len(sys.argv) == 3:
+    broker = sys.argv[1]
+    topics= sys.argv[2]
+
+client = mosquitto.Mosquitto()
+client.on_message = on_message
+client.on_connect = on_connect
+client.connect(broker)
+client.subscribe(topics)
+
+
+timer = 3000        #Crude method of waiting for subscriptions to come in.  This could be improved.
+while timer > 0:
+    print "Collecting topics %s", timer
+    client.loop(0)
+    timer = timer -1
+    pass
+
+client.unsubscribe(topics)
+for t in topiclist:
+    print "Erasing topic: ", t
+    client.publish(t, "", retain = True)    
+
+

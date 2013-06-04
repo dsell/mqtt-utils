@@ -1,3 +1,7 @@
-This is a handy utility to monitor MQTT activity.
+This is a collection of MQTT utilities.
+
+mwatch is a handy utility to monitor MQTT activity.
+mprune is a utility to prune the MQTT topic tree.  Removing retained topics.
+
 
 
