@@ -1,5 +1,11 @@
 #!/usr/bin/python
 
+# mprune - Prunes a topic tree of retained messages in an MQTT broker
+#
+# By Dennis Sell
+#
+#
+
 
 import sys
 import mosquitto
