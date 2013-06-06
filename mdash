@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-# mwatch - Watches topics change from an MQTT broker
+# mdash - Watches $SYS topics from an MQTT broker and presents them in a dashboard view.
 #
 # By Dennis Sell
 #
-# Inspired by subcurses written by Andrew Elwell <Andrew.Elwell@ivec.org>
+# 
 
 
 
@@ -21,7 +21,7 @@ from curses.ascii import isprint
 import time
 import datetime
 
-version_number = 0.6
+version_number = 0.5
 topiclist = []
 count = []
 numtopics = 0
@@ -35,21 +35,24 @@ qos_col = topic_size
 count_col = topic_size
 timestamp_col = topic_size
 message_col = topic_size
+items = []
 
+class item:
+    def __init__(self, topic, y, x, length):
+        self.topic = topic
+        self.y = y
+        self.x = x
+        self.length = length
+
+
+#  array topic x y erase-len
 
 def usage():
-    print "usage: mwatch [options]"  #[hostname[:port]] [topics]" 
+    print "usage: mdash [options]"  #[hostname[:port]] [topics]" 
     print "Watch topics change from an MQTT broker."
     print 
     print "   -u --hostname HOSTNAME set hostname for broker (default localhost)"
     print "   -p --port PORT         set port for mqtt broker (default 1883)"
-    print "   -t --topics TOPICS     set topics to watch (default /#)"
-    print "   -q --qos               show QOS as recieved"
-    print "   -r --retained          show retained status"
-    print "   -c --count             show count of receptions"
-    print "   -s --timestamp         show timestamp of message reception"
-    print "   -a --all               show all data fields"
-    print "   -x --hex               show message in hex"
     print "   -h --help              show this help information"
     print "   -v --version           show version information"
     print "By Dennis Sell -- 2013"
@@ -74,8 +77,6 @@ def show_help():
     help_win.addstr(9, 1, "[Down Arrow]  - Scroll down")
     help_win.addstr(10, 1, "[Page Up]     - Page up")
     help_win.addstr(11, 1, "[Page Down]   - Page down")
-    help_win.addstr(13, 1, "Retained flag == True implies the message was")
-    help_win.addstr(14, 1, "sent before mwatch connected to the broker.  ")
     help_win.addstr(16, 1, "q - To exit help.")
     help_win.noutrefresh()
     curses.doupdate()
@@ -85,28 +86,15 @@ def show_help():
             break
     help_win.erase()
     del help_win
-    stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+    stats.nooutrefresh()
     stdscr.nooutrefresh()
     curses.doupdate()
 
 
 def on_connect(mosq, userdata, rc):
     stdscr.addstr(curses.LINES-1,0,"Connected to %s" % broker)
-    stdscr.addstr(0,15,"Sunscribed to %s" % topics, curses.A_REVERSE)
     stdscr.noutrefresh()
     curses.doupdate()
-
-
-def isprintable(v):
-    ret = True
-    for char in v:
-        if not curses.ascii.isprint(char):    
-            ret = False
-    return ret
-
-
-def printable(input):
-    return ''.join(char for char in input if isprint(char))
 
 
 def on_message(mosq, userdata, msg):
@@ -115,36 +103,17 @@ def on_message(mosq, userdata, msg):
     global retained_flag
     global timestamp_flag
 
-    rxcount = rxcount + 1
-    stdscr.addstr(0,80,"Msg count %s" % rxcount, curses.A_REVERSE)
-    if msg.topic not in topiclist:
-        topiclist.append(msg.topic)
-        numtopics = numtopics + 1
-        count.append(0)
-        stdscr.addstr(0,60,"Topic count %s" % numtopics, curses.A_REVERSE)
-    offset = topiclist.index(msg.topic) 
-    count[offset] = count[offset] + 1
-    stats_txt.move(offset, message_col)
-    stats_txt.clrtoeol()
-    stats_txt.addstr(offset, topic_col, msg.topic)
-    if isprintable(msg.payload) and not hex_flag:
-        stats_txt.addstr(offset, message_col, msg.payload[0:1900])
-    else:
-        v = " ".join([hex(ord(a)) for a in msg.payload])  #Does individual bytes.
-        stats_txt.addstr(offset, message_col, "####  NON-ALPHANUMERIC  #### --> 0x" + msg.payload.encode('hex')[0:1900])
-    if msg.retain:
-        retained_value = "True "
-    else:
-        retained_value = "False"
-    if retained_flag:
-        stats_txt.addstr(offset, retained_col, retained_value)
-    if qos_flag:
-        stats_txt.addstr(offset, qos_col, str(msg.qos))
-    if count_flag:
-        stats_txt.addstr(offset, count_col, str(count[offset]))
-    if timestamp_flag:
-        stats_txt.addstr(offset, timestamp_col, str(datetime.datetime.now()))
-    stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+    for i in items:
+        if i.topic == msg.topic:
+            stdscr.addstr(i.y, i.x, "                           "[1:i.length])
+            if i.length < len(msg.payload):
+                stdscr.addstr(30, 30, msg.topic)
+            stdscr.addstr(i.y, i.x + i.length - len(msg.payload), msg.payload)        
+    if msg.topic == "$SYS/broker/uptime":
+            t = msg.payload.split(" ")
+            uptime = datetime.timedelta(seconds=int(t[0]))
+            uptime_text = str(uptime)
+            stdscr.addstr(14,other_col+other_tab+2, uptime_text)
     curses.doupdate()
 
 
@@ -152,7 +121,7 @@ def getTerminalSize():
     """
     returns (lines:int, cols:int)
     """
-    import os, struct
+    import os
     def ioctl_GWINSZ(fd):
         import fcntl, termios
         return struct.unpack("hh", fcntl.ioctl(fd, termios.TIOCGWINSZ, "1234"))
@@ -186,7 +155,7 @@ def getTerminalSize():
 
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], 'u:p:t:rqcsaxhv', ['hostname=', 'port=', 'topics=', 'retained', 'qos', 'count', 'timestamp', 'all', 'hex', 'help', 'version'])
+    opts, args = getopt.getopt(sys.argv[1:], 'u:p:hv', ['hostname=', 'port=', 'help', 'version'])
 except getopt.GetoptError as err:
     print str(err)
     usage()
@@ -196,12 +165,7 @@ except getopt.GetoptError as err:
 # defaults
 broker = "127.0.0.1"
 port = 1883
-topics = "/#"
-retained_flag = False
-qos_flag = False
-count_flag = False
-timestamp_flag = False
-hex_flag = False
+topics = "$SYS/#"
 
 for opt, arg in opts:
     if opt in ('-h', '--help'):
@@ -214,23 +178,6 @@ for opt, arg in opts:
         broker = arg
     elif opt in ('-p', '--port'):
         port = arg
-    elif opt in ('-t', '--topics'):
-        topics = arg
-    elif opt in ('-r', '--retained'):
-        retained_flag = True
-    elif opt in ('-q', '--qos'):
-        qos_flag = True
-    elif opt in ('-c', '--count'):
-        count_flag = True
-    elif opt in ('-s', '--timestamp'):
-        timestamp_flag = True
-    elif opt in ('-a', '--all'):
-        retained_flag = True
-        qos_flag = True
-        count_flag = True
-        timestamp_flag = True
-    elif opt in ('-x', '--hex'):
-        hex_flag = True
     else:
         usage()
         sys.exit(2)
@@ -241,11 +188,7 @@ client = mosquitto.Mosquitto()
 client.on_message = on_message
 client.on_connect = on_connect
 client.connect(broker)
-if qos_flag:
-    qos = 2
-else:
-    qos = 0
-client.subscribe(topics, qos=qos)
+client.subscribe(topics)
 
 # initialize curses
 stdscr = curses.initscr()
@@ -267,44 +210,114 @@ stdscr.keypad(1)
 
 
 # draw basic screen
-stdscr.addstr("MQTT watch ", curses.A_REVERSE)
-stdscr.chgat(-1,curses.A_REVERSE)
-stdscr.addstr(curses.LINES-1,curses.COLS-57,"page-up, page-dn, cursor arrows, ? for help, q to Quit")
-page = curses.LINES - 3
+stdscr.addstr("MQTT Dashboard ", curses.A_REVERSE)
+stdscr.addstr(curses.LINES-1,curses.COLS-37,"? for help, q to Quit")
 stats = curses.newwin(curses.LINES-2,curses.COLS,1,0)
 stats.box()
-header_txt = curses.newpad(1,2000)
-stats_txt = curses.newpad(2000,2000)
-stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
 stdscr.noutrefresh()
 stats.noutrefresh()
+clients_col = 3
+clients_tab = 10
+messages_col = 32
+messages_tab = 10
+other_col = 62
+other_tab = 12
+sent1m_col = 19
+rec1m_col = 31
+sent5m_col = 42
+rec5m_col = 56
+sent15m_col = 67
+rec15m_col = 79
+senttot_col = 88
+rectot_col = 104
 
 
-header_txt.addstr(0, topic_col+1, "TOPIC", curses.A_UNDERLINE)
-if retained_flag:
-    qos_col = qos_col + 10
-    timestamp_col = timestamp_col + 10
-    count_col = count_col + 10
-    message_col = message_col + 10
-    if curses.COLS > retained_col + 2:
-        header_txt.addstr(0, retained_col+1, "RETAINED", curses.A_UNDERLINE)
-if qos_flag:
-    timestamp_col = timestamp_col + 5
-    count_col = count_col + 5
-    message_col = message_col + 5
-    header_txt.addstr(0, qos_col+1, "QOS", curses.A_UNDERLINE)
-if count_flag:
-    timestamp_col = timestamp_col + 7
-    message_col = message_col + 7
-    header_txt.addstr(0, count_col+1, "COUNT", curses.A_UNDERLINE)
-if timestamp_flag:
-    message_col = message_col + 28
-    header_txt.addstr(0, timestamp_col+1, "RECEIVED TIMESTAMP", curses.A_UNDERLINE)
-if curses.COLS > message_col + 10:
-    header_txt.addstr(0, message_col+1, "MESSAGE", curses.A_UNDERLINE)
-header_txt.refresh(0, 0, 2, 1, 2, curses.COLS-3)
+stdscr.addstr(3, 1, "Version:", curses.A_UNDERLINE)
+stdscr.addstr(5, 1, "Load:                 Per 1 Min.             Per 5 Min.               Per 15 Min.              Total")
+stdscr.addstr(6, 1, "                    Sent      Received     Sent        Received     Sent      Received       Sent      Received", curses.A_UNDERLINE)
+stdscr.addstr(7, 1, "Bytes:")
+stdscr.addstr(8, 1, "Messages:")
+stdscr.addstr(9, 1, "Published:")
+stdscr.addstr(10, 1, "Connections:")
+stdscr.addstr(11, 1, "Sockets:")
+stdscr.addstr(13, 1, "Clients:")
+stdscr.addstr(14, clients_col, "Active:")
+stdscr.addstr(15, clients_col, "Inactive:")
+stdscr.addstr(16, clients_col, "Total:")
+stdscr.addstr(17, clients_col, "Expired:")
+stdscr.addstr(18, clients_col, "Maximum:")
+stdscr.addstr(13, 30, "Messages:")
+stdscr.addstr(14, messages_col, "Retained:")
+stdscr.addstr(15, messages_col, "Stored:")
+stdscr.addstr(16, messages_col, "Dropped:")
+stdscr.addstr(17, messages_col, "Inflight:")
+stdscr.addstr(18, messages_col, "Subscrip.:")
+stdscr.addstr(13, 60, "Other:")
+stdscr.addstr(14, other_col, "Uptime:")
+stdscr.addstr(15, other_col, "Heap Cur.:")
+stdscr.addstr(16, other_col, "Heap Max.:")
+stdscr.addstr(20, 1, "Log:")
 stats.noutrefresh()
 curses.doupdate()
+
+items.append(item("$SYS/broker/version", 3, 10, 25))
+items.append(item("$SYS/broker/timestamp", 3, 38, 25))
+items.append(item("$SYS/broker/changeset", 3, 67, 25))
+
+
+#items.append(item("$SYS/broker/publish/bytes/received", 7, rectot_col, 8))
+#items.append(item("$SYS/broker/publish/bytes/sent", 7, senttot_col, 8))
+
+items.append(item("$SYS/broker/load/bytes/received/1min", 7, rec1m_col, 8))
+items.append(item("$SYS/broker/load/bytes/received/5min", 7, rec5m_col, 8))
+items.append(item("$SYS/broker/load/bytes/received/15min", 7, rec15m_col, 8))
+items.append(item("$SYS/broker/load/bytes/sent/1min", 7, sent1m_col, 8))
+items.append(item("$SYS/broker/load/bytes/sent/5min", 7, sent5m_col, 8))
+items.append(item("$SYS/broker/load/bytes/sent/15min", 7, sent15m_col, 8))
+items.append(item("$SYS/broker/bytes/received", 7, rectot_col, 8))
+items.append(item("$SYS/broker/bytes/sent", 7, senttot_col, 10))
+
+items.append(item("$SYS/broker/load/messages/received/1min", 8, rec1m_col, 8))
+items.append(item("$SYS/broker/load/messages/received/5min", 8, rec5m_col, 8))
+items.append(item("$SYS/broker/load/messages/received/15min", 8, rec15m_col, 8))
+items.append(item("$SYS/broker/load/messages/sent/1min", 8, sent1m_col, 8))
+items.append(item("$SYS/broker/load/messages/sent/5min", 8, sent5m_col, 8))
+items.append(item("$SYS/broker/load/messages/sent/15min", 8, sent15m_col, 8))
+items.append(item("$SYS/broker/messages/received", 8, rectot_col, 8))
+items.append(item("$SYS/broker/messages/sent", 8, senttot_col, 10))
+
+items.append(item("$SYS/broker/load/publish/received/1min", 9, rec1m_col, 8))
+items.append(item("$SYS/broker/load/publish/received/5min", 9, rec5m_col, 8))
+items.append(item("$SYS/broker/load/publish/received/15min", 9, rec15m_col, 8))
+items.append(item("$SYS/broker/load/publish/sent/1min", 9, sent1m_col, 8))
+items.append(item("$SYS/broker/load/publish/sent/5min", 9, sent5m_col, 8))
+items.append(item("$SYS/broker/load/publish/sent/15min", 9, sent15m_col, 8))
+items.append(item("$SYS/broker/publish/messages/received", 9, rectot_col, 8))
+items.append(item("$SYS/broker/publish/messages/sent", 9, senttot_col, 10))
+
+items.append(item("$SYS/broker/load/connections/1min", 10, sent1m_col+5, 8))
+items.append(item("$SYS/broker/load/connections/5min", 10, sent5m_col+5, 8))
+items.append(item("$SYS/broker/load/connections/15min", 10, sent15m_col+5, 8))
+
+items.append(item("$SYS/broker/load/sockets/1min", 11, sent1m_col+5, 8))
+items.append(item("$SYS/broker/load/sockets/5min", 11, sent5m_col+5, 8))
+items.append(item("$SYS/broker/load/sockets/15min", 11, sent15m_col+5, 8))
+
+items.append(item("$SYS/broker/retained messages/count", 14, messages_col+messages_tab, 8))
+items.append(item("$SYS/broker/messages/stored", 15, messages_col+messages_tab, 8))
+items.append(item("$SYS/broker/messages/dropped", 16, messages_col+messages_tab, 8))
+items.append(item("$SYS/broker/messages/inflight", 17, messages_col+messages_tab, 8))
+items.append(item("$SYS/broker/subscriptions/count", 18, messages_col+messages_tab, 8))
+
+items.append(item("$SYS/broker/clients/active", 14, clients_col+clients_tab, 8))
+items.append(item("$SYS/broker/clients/inactive", 15, clients_col+clients_tab, 8))
+items.append(item("$SYS/broker/clients/total", 16, clients_col+clients_tab, 8))
+items.append(item("$SYS/broker/clients/expired", 17,clients_col+clients_tab, 8))
+items.append(item("$SYS/broker/clients/maximum", 18, clients_col+clients_tab, 8))
+
+items.append(item("$SYS/broker/heap/current size", 15, other_col+other_tab, 8))
+items.append(item("$SYS/broker/heap/maximum size", 16, other_col+other_tab, 8))
+
 
 # main loop
 while client.loop(0) == 0:
