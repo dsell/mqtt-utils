@@ -1,0 +1,364 @@
+#!/usr/bin/python
+
+# mpanel - Watches client status information from an MQTT broker
+#
+# By Dennis Sell
+#
+# 
+
+
+
+#BUGS
+# resizing terminal crashes.  Possibly some curses/mosquitto interaction.
+
+
+import os
+import sys
+import getopt
+import mosquitto
+import curses
+from curses.ascii import isprint
+import time
+import datetime
+
+version_number = 0.5
+topiclist = []
+numclients = 0
+rxcount = 0
+pos = 0
+col = 0
+topic_col = 0
+topic_size = 60
+retained_col = topic_size
+qos_col = topic_size
+count_col = topic_size
+timestamp_col = topic_size
+message_col = topic_size
+items = []
+
+class item:
+    def __init__(self, topic_tail, x, length):
+        self.topic_tail = topic_tail
+        self.x = x
+        self.length = length
+
+
+def usage():
+    print "usage: mpanel [options]"  #[hostname[:port]] [topics]" 
+    print "Watch topics change from an MQTT broker."
+    print 
+    print "   -u --hostname HOSTNAME set hostname for broker (default localhost)"
+    print "   -p --port PORT         set port for mqtt broker (default 1883)"
+    print "   -t --topics TOPICS     set topics to watch (default /#)"
+    print "   -h --help              show this help information"
+    print "   -v --version           show version information"
+    print "By Dennis Sell -- 2013"
+
+
+def version():
+    print "version: " + str(version_number)
+
+
+def show_help():
+    help_cols = curses.COLS/2
+    help_lines = curses.LINES/2
+    help_win = curses.newwin(24, 50, help_lines-12, help_cols-25)
+    help_win.box()
+    help_win.addstr(1, 1, "Key Commands", curses.A_UNDERLINE)
+    help_win.addstr(3, 1, "[Home]        - Jump to top left")
+    help_win.addstr(4, 1, "b             - Jump to begining of line")
+    help_win.addstr(5, 1, "e             - Jump to end of line")
+    help_win.addstr(6, 1, "[Right Arrow] - Scroll to right")
+    help_win.addstr(7, 1, "[Left Arrow]  - Scroll to left")
+    help_win.addstr(8, 1, "[Up Arrow]    - Scroll up")
+    help_win.addstr(9, 1, "[Down Arrow]  - Scroll down")
+    help_win.addstr(10, 1, "[Page Up]     - Page up")
+    help_win.addstr(11, 1, "[Page Down]   - Page down")
+    help_win.addstr(13, 1, "p             - Send a ping request")
+    help_win.addstr(14, 1, "i             - Send an identify request")
+    help_win.addstr(16, 1, "q - To exit help.")
+    help_win.noutrefresh()
+    curses.doupdate()
+    while True:
+        key = stdscr.getch()
+        if key == ord("q"):
+            break
+    help_win.erase()
+    del help_win
+    stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+    stdscr.nooutrefresh()
+    curses.doupdate()
+
+
+def on_connect(mosq, userdata, rc):
+    stdscr.addstr(curses.LINES-1,0,"Connected to %s" % broker)
+    stdscr.addstr(0,15,"Sunscribed to %s" % topics, curses.A_REVERSE)
+    stdscr.noutrefresh()
+    curses.doupdate()
+
+
+def on_message(mosq, userdata, msg):
+    global numclients
+    global rxcount
+    global retained_flag
+    global timestamp_flag
+
+    rxcount = rxcount + 1
+    stdscr.addstr(0,80,"Msg count %s" % rxcount, curses.A_REVERSE)
+    t = msg.topic.split("/")
+    if len(t) > 3:
+        if t[2] != "global":
+            if t[2] not in topiclist:
+                topiclist.append(t[2])
+                numclients = numclients + 1
+                offset = topiclist.index(t[2])
+                stats_txt.addstr(offset, 3 - len(str(numclients)), str(numclients))
+                stats_txt.addstr(offset, 4, t[2])   
+
+                stdscr.addstr(0,60,"Client count %s" % numclients, curses.A_REVERSE) 
+            else:
+                offset = topiclist.index(t[2])
+            for i in items:
+                if i.topic_tail == t[3]:
+                    stats_txt.addstr(offset, i.x, "                                        "[1:i.length])
+                    if i.length + 1 > len(msg.payload):
+                        stats_txt.addstr(offset, i.x + i.length - len(msg.payload) - 1, msg.payload)      
+            stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+            curses.doupdate()
+
+
+def getTerminalSize():
+    """
+    returns (lines:int, cols:int)
+    """
+    import os, struct
+    def ioctl_GWINSZ(fd):
+        import fcntl, termios
+        return struct.unpack("hh", fcntl.ioctl(fd, termios.TIOCGWINSZ, "1234"))
+    # try stdin, stdout, stderr
+    for fd in (0, 1, 2):
+        try:
+            return ioctl_GWINSZ(fd)
+        except:
+            pass
+    # try os.ctermid()
+    try:
+        fd = os.open(os.ctermid(), os.O_RDONLY)
+        try:
+            return ioctl_GWINSZ(fd)
+        finally:
+            os.close(fd)
+    except:
+        pass
+    # try `stty size`
+    try:
+        return tuple(int(x) for x in os.popen("stty size", "r").read().split())
+    except:
+        pass
+    # try environment variables
+    try:
+        return tuple(int(os.getenv(var)) for var in ("LINES", "COLUMNS"))
+    except:
+        pass
+    # i give up. return default.
+    return (25, 80)
+
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], 'u:p:t:hv', ['hostname=', 'port=', 'topics=', 'help', 'version'])
+except getopt.GetoptError as err:
+    print str(err)
+    usage()
+    sys.exit(2)
+
+
+# defaults
+broker = "127.0.0.1"
+port = 1883
+topics = "/clients/#"
+
+for opt, arg in opts:
+    if opt in ('-h', '--help'):
+        usage()
+        sys.exit(2)
+    if opt in ('-v', '--version'):
+        version()
+        sys.exit(2)
+    elif opt in ('-u', '--hostname'):
+        broker = arg
+    elif opt in ('-p', '--port'):
+        port = arg
+    elif opt in ('-t', '--topics'):
+        topics = arg
+    else:
+        usage()
+        sys.exit(2)
+
+
+# minitialize mosquitto, connect, and subscribe
+client = mosquitto.Mosquitto()
+client.on_message = on_message
+client.on_connect = on_connect
+client.connect(broker)
+client.subscribe(topics)
+
+# initialize curses
+stdscr = curses.initscr()
+if curses.COLS < 95:
+    curses.endwin()
+    print "mpanel requires a minimum terminal width of 95 columns."    
+    sys.exit(2)
+if curses.LINES < 7:
+    curses.endwin()
+    print "mpanel requires a minimum terminal heigth of 7 rows."    
+    sys.exit(2)
+stdscr.nodelay(1)
+curses.curs_set(0)
+if curses.has_colors():
+    curses.start_color()
+curses.cbreak()
+curses.noecho()
+stdscr.keypad(1)
+
+
+# draw basic screen
+stdscr.addstr("MQTT Panel ", curses.A_REVERSE)
+stdscr.chgat(-1,curses.A_REVERSE)
+stdscr.addstr(curses.LINES-1,curses.COLS-57,"page-up, page-dn, cursor arrows, ? for help, q to Quit")
+page = curses.LINES - 3
+stats = curses.newwin(curses.LINES-2,curses.COLS,1,0)
+stats.box()
+header_txt = curses.newpad(1,2000)
+stats_txt = curses.newpad(2000,2000)
+stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+stdscr.noutrefresh()
+stats.noutrefresh()
+
+num_col = 1
+name_col = num_col+4
+ver_col = name_col+35
+status_col = ver_col+16
+ping_col = status_col+13
+extip_col = ping_col+9
+locip_col = extip_col+16
+pid_col = locip_col+16
+startts_col = pid_col+7
+con_col = startts_col+27
+conts_col = con_col+5
+dists_col = conts_col+27
+
+header_txt.addstr(0, num_col, "#  ", curses.A_UNDERLINE)
+header_txt.addstr(0, name_col, "Client Name                       ", curses.A_UNDERLINE)
+header_txt.addstr(0, ver_col, "Ver. (a:c:d)   ", curses.A_UNDERLINE)
+header_txt.addstr(0, status_col, "Status      ", curses.A_UNDERLINE)
+header_txt.addstr(0, ping_col, "Ping    ", curses.A_UNDERLINE)
+header_txt.addstr(0, extip_col, "External Ip    ", curses.A_UNDERLINE)
+header_txt.addstr(0, locip_col, "Local IP       ", curses.A_UNDERLINE)
+header_txt.addstr(0, pid_col, "PID   ", curses.A_UNDERLINE)
+header_txt.addstr(0, startts_col, "Start Ts                  ", curses.A_UNDERLINE)
+header_txt.addstr(0, con_col, "Con.", curses.A_UNDERLINE)
+header_txt.addstr(0, conts_col, "Connect Ts                ", curses.A_UNDERLINE)
+header_txt.addstr(0, dists_col, "Disconnect Ts             ", curses.A_UNDERLINE)
+header_txt.refresh(0, 0, 2, 1, 2, curses.COLS-3)
+stats.noutrefresh()
+curses.doupdate()
+
+items.append(item("status", status_col, 12))
+items.append(item("ping", ping_col, 8))
+items.append(item("version", ver_col, 5))
+items.append(item("core-version", ver_col+5, 5))
+items.append(item("daemon-version", ver_col+10, 5))
+items.append(item("extip", extip_col, 15))
+items.append(item("locip", locip_col, 15))
+items.append(item("pid", pid_col, 6))
+items.append(item("start", startts_col, 26))
+items.append(item("count", con_col, 4))
+items.append(item("connecttime", conts_col, 26))
+items.append(item("disconnecttime", dists_col, 26))
+
+
+# main loop
+while client.loop(0) == 0:
+    key = stdscr.getch()
+    if key == ord("q"):
+        break
+    if key == ord("?"):
+        show_help()
+    if key == ord("p"):
+        client.publish("/clients/global/ping", "request")
+    if key == ord("i"):
+        client.publish("/clients/global/identify", "request")
+    if key == curses.KEY_DOWN:
+        pos = pos + 1
+        if pos > numclients:
+            pos = numclients
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == curses.KEY_UP:
+        pos = pos - 1
+        if pos < 0:
+            pos = 0
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == curses.KEY_NPAGE:
+        pos = pos + page - 2
+        if pos > numclients:
+            pos = numclients
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == curses.KEY_PPAGE:
+        pos = pos - page + 2
+        if pos < 0:
+            pos = 0
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == curses.KEY_LEFT:
+        col = col - 1
+        if col < 0:
+            col = 0
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == curses.KEY_RIGHT:
+        col = col + 1
+        if col > 200: #3-curses.COLS:
+            col = 200 #3-curses.COLS
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == curses.KEY_HOME:
+        pos = 0
+        col = 0
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == ord("b"):
+        col = 0
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == ord("e"):
+        col = 200 #3 - curses.COLS
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    if key == curses.KEY_RESIZE:    #Resizing the terminal screen crashes this program.  
+        l, c = getTerminalSize()    #It seems to be something to do with calling the mosquitto library in the above while loop.  
+        if c > 50:                  #Redrawing belongs here if the problem gets solved.
+            stdscr.addstr(0, curses.COLS-20, "Col: " + str(c) + "  Lines: " + str(l))
+    l, c = getTerminalSize()
+    if c > 120:                 
+        stdscr.addstr(0,c - 27,"%s" % str(datetime.datetime.now()), curses.A_REVERSE)
+    pass
+
+
+# clean up terminal settings
+curses.nocbreak()
+stdscr.keypad(0)
+curses.echo()
+curses.endwin()
+
