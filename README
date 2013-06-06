@@ -2,6 +2,7 @@ This is a collection of MQTT utilities.
 
 mwatch is a handy utility to monitor MQTT activity.
 mprune is a utility to prune the MQTT topic tree.  Removing retained topics.
-
+mdash is a utility to monitor the stats in an MQTT broker ($SYS/# topics)
+mpanel is a utility to monitor the status of clients in an MQTT broker.  (Note: this utility depends on a standardized set of topics published from each client.)
 
 
