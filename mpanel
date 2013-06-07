@@ -10,6 +10,7 @@
 
 #BUGS
 # resizing terminal crashes.  Possibly some curses/mosquitto interaction.
+# External IP gets overwritten at times.
 
 
 import os
@@ -238,7 +239,8 @@ num_col = 1
 name_col = num_col+4
 ver_col = name_col+35
 status_col = ver_col+16
-ping_col = status_col+13
+class_col = status_col+13
+ping_col = class_col+7
 extip_col = ping_col+9
 locip_col = extip_col+16
 pid_col = locip_col+16
@@ -251,6 +253,7 @@ header_txt.addstr(0, num_col, "#  ", curses.A_UNDERLINE)
 header_txt.addstr(0, name_col, "Client Name                       ", curses.A_UNDERLINE)
 header_txt.addstr(0, ver_col, "Ver. (a:c:d)   ", curses.A_UNDERLINE)
 header_txt.addstr(0, status_col, "Status      ", curses.A_UNDERLINE)
+header_txt.addstr(0, class_col, "Class ", curses.A_UNDERLINE)
 header_txt.addstr(0, ping_col, "Ping    ", curses.A_UNDERLINE)
 header_txt.addstr(0, extip_col, "External Ip    ", curses.A_UNDERLINE)
 header_txt.addstr(0, locip_col, "Local IP       ", curses.A_UNDERLINE)
@@ -266,6 +269,7 @@ curses.doupdate()
 items.append(item("status", status_col, 12))
 items.append(item("ping", ping_col, 8))
 items.append(item("version", ver_col, 5))
+items.append(item("class", class_col, 5))
 items.append(item("core-version", ver_col+5, 5))
 items.append(item("daemon-version", ver_col+10, 5))
 items.append(item("extip", extip_col, 15))

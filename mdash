@@ -106,7 +106,7 @@ def on_message(mosq, userdata, msg):
     for i in items:
         if i.topic == msg.topic:
             stdscr.addstr(i.y, i.x, "                           "[1:i.length])
-            if i.length > len(msg.payload):
+            if i.length + 1 > len(msg.payload):
                 stdscr.addstr(i.y, i.x + i.length - len(msg.payload), msg.payload)        
     if msg.topic == "$SYS/broker/uptime":
             t = msg.payload.split(" ")

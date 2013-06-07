@@ -26,7 +26,7 @@ import datetime
 from daemon import daemon_version
 
 
-COREVERSION = 0.6
+COREVERSION = 0.7
 
 
 class MQTTClientCore:
@@ -40,6 +40,7 @@ class MQTTClientCore:
         self.starttime=datetime.datetime.now()
         self.connecttime=0 
         self.disconnecttime=0 
+        self.persist = False
         self.mqtt_connected = False
         self.clienttype = clienttype
         self.clean_session = clean_session
@@ -49,18 +50,19 @@ class MQTTClientCore:
         self.configfile = homedir + "/." + appname + '.conf'
         self.mqtttimeout = 60    # seconds
 
-        if ('type1' == self.clienttype):
+        if ('single' == self.clienttype):
             self.clientname = appname
             self.persist = True
-        elif ('type2' == self.clienttype):
+        elif ('multi' == self.clienttype):
             self.persist = True
             self.clientname = appname + "[" + socket.gethostname() + "]"
-        elif ('type3' == self.clienttype):
+        elif ('app' == self.clienttype):
             self.clientname = appname + "[" + socket.gethostname() + "_" +\
                               str(os.getpid()) + "]"
             self.persist = False
         else: # catchall
             self.clientname = appname
+            self.persist = False
         self.clientbase = "/clients/" + self.clientname + "/"
         LOGFORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
