@@ -38,10 +38,11 @@ message_col = topic_size
 items = []
 
 class item:
-    def __init__(self, topic_tail, x, length):
+    def __init__(self, topic_tail, x, length, rl = 'l'):
         self.topic_tail = topic_tail
         self.x = x
         self.length = length
+        self.rl = rl
 
 
 def usage():
@@ -121,9 +122,11 @@ def on_message(mosq, userdata, msg):
                 offset = topiclist.index(t[2])
             for i in items:
                 if i.topic_tail == t[3]:
-                    stats_txt.addstr(offset, i.x, "                                        "[1:i.length])
-                    if i.length + 1 > len(msg.payload):
-                        stats_txt.addstr(offset, i.x + i.length - len(msg.payload) - 1, msg.payload)      
+                    #stats_txt.addstr(offset, i.x, "                                        "[1:i.length])
+                    if i.length + 1 > len(msg.payload) and i.rl == 'r':
+                        stats_txt.addstr(offset, i.x-1, str(msg.payload).rjust(i.length))      
+                    else:
+                        stats_txt.addstr(offset, i.x-1, str(msg.payload).ljust(i.length))
             stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
             curses.doupdate()
 
@@ -236,49 +239,62 @@ stdscr.noutrefresh()
 stats.noutrefresh()
 
 num_col = 1
-name_col = num_col+4
-ver_col = name_col+35
-status_col = ver_col+16
-class_col = status_col+13
-ping_col = class_col+7
-extip_col = ping_col+9
-locip_col = extip_col+16
-pid_col = locip_col+16
-startts_col = pid_col+7
-con_col = startts_col+27
-conts_col = con_col+5
-dists_col = conts_col+27
+num_len = 3
+name_col = num_col+num_len+1
+name_len = 34
+ver_col = name_col+name_len+1
+ver_len = 14
+status_col = ver_col+ver_len+1
+status_len = 7
+class_col = status_col+status_len+1
+class_len = 6
+ping_col = class_col+class_len+1
+ping_len = 8
+extip_col = ping_col+ping_len+1
+extip_len = 15
+locip_col = extip_col+extip_len+1
+locip_len = 15
+pid_col = locip_col+locip_len+1
+pid_len = 6
+startts_col = pid_col+pid_len+1
+startts_len = 26
+con_col = startts_col+startts_len+1
+con_len = 4
+conts_col = con_col+con_len+1
+conts_len = 26
+dists_col = conts_col+conts_len+1
+dists_len = 26
 
-header_txt.addstr(0, num_col, "#  ", curses.A_UNDERLINE)
-header_txt.addstr(0, name_col, "Client Name                       ", curses.A_UNDERLINE)
-header_txt.addstr(0, ver_col, "Ver. (a:c:d)   ", curses.A_UNDERLINE)
-header_txt.addstr(0, status_col, "Status      ", curses.A_UNDERLINE)
-header_txt.addstr(0, class_col, "Class ", curses.A_UNDERLINE)
-header_txt.addstr(0, ping_col, "Ping    ", curses.A_UNDERLINE)
-header_txt.addstr(0, extip_col, "External Ip    ", curses.A_UNDERLINE)
-header_txt.addstr(0, locip_col, "Local IP       ", curses.A_UNDERLINE)
-header_txt.addstr(0, pid_col, "PID   ", curses.A_UNDERLINE)
-header_txt.addstr(0, startts_col, "Start Ts                  ", curses.A_UNDERLINE)
-header_txt.addstr(0, con_col, "Con.", curses.A_UNDERLINE)
-header_txt.addstr(0, conts_col, "Connect Ts                ", curses.A_UNDERLINE)
-header_txt.addstr(0, dists_col, "Disconnect Ts             ", curses.A_UNDERLINE)
+header_txt.addstr(0, num_col, "#".ljust(num_len), curses.A_UNDERLINE)
+header_txt.addstr(0, name_col, "Client Name".ljust(name_len), curses.A_UNDERLINE)
+header_txt.addstr(0, ver_col, "Ver. (a:c:d)".ljust(ver_len), curses.A_UNDERLINE)
+header_txt.addstr(0, status_col, "Status".ljust(status_len), curses.A_UNDERLINE)
+header_txt.addstr(0, class_col, "Class".ljust(class_len), curses.A_UNDERLINE)
+header_txt.addstr(0, ping_col, "Ping".ljust(ping_len), curses.A_UNDERLINE)
+header_txt.addstr(0, extip_col, "External Ip".ljust(extip_len), curses.A_UNDERLINE)
+header_txt.addstr(0, locip_col, "Local IP".ljust(locip_len), curses.A_UNDERLINE)
+header_txt.addstr(0, pid_col, "PID".ljust(pid_len), curses.A_UNDERLINE)
+header_txt.addstr(0, startts_col, "Start Ts".ljust(startts_len), curses.A_UNDERLINE)
+header_txt.addstr(0, con_col, "Con.".ljust(con_len), curses.A_UNDERLINE)
+header_txt.addstr(0, conts_col, "Connect Ts".ljust(conts_len), curses.A_UNDERLINE)
+header_txt.addstr(0, dists_col, "Disconnect Ts".ljust(dists_len), curses.A_UNDERLINE)
 header_txt.refresh(0, 0, 2, 1, 2, curses.COLS-3)
 stats.noutrefresh()
 curses.doupdate()
 
-items.append(item("status", status_col, 12))
-items.append(item("ping", ping_col, 8))
-items.append(item("version", ver_col, 5))
-items.append(item("class", class_col, 5))
-items.append(item("core-version", ver_col+5, 5))
-items.append(item("daemon-version", ver_col+10, 5))
-items.append(item("extip", extip_col, 15))
-items.append(item("locip", locip_col, 15))
-items.append(item("pid", pid_col, 6))
-items.append(item("start", startts_col, 26))
-items.append(item("count", con_col, 4))
-items.append(item("connecttime", conts_col, 26))
-items.append(item("disconnecttime", dists_col, 26))
+items.append(item("status", status_col, status_len, 'l'))
+items.append(item("ping", ping_col, ping_len, 'l'))
+items.append(item("version", ver_col, 4, 'r'))
+items.append(item("class", class_col, class_len, 'l'))
+items.append(item("core-version", ver_col+5, 4, 'r'))
+items.append(item("daemon-version", ver_col+10, 4, 'r'))
+items.append(item("extip", extip_col, extip_len, 'r'))
+items.append(item("locip", locip_col, locip_len, 'r'))
+items.append(item("pid", pid_col, pid_len, 'r'))
+items.append(item("start", startts_col, startts_len, 'r'))
+items.append(item("count", con_col, con_len, 'r'))
+items.append(item("connecttime", conts_col, conts_len, 'r'))
+items.append(item("disconnecttime", dists_col, dists_len, 'r'))
 
 
 # main loop
