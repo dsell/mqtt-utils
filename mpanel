@@ -10,7 +10,6 @@
 
 #BUGS
 # resizing terminal crashes.  Possibly some curses/mosquitto interaction.
-# External IP gets overwritten at times.
 
 
 import os
@@ -22,7 +21,7 @@ from curses.ascii import isprint
 import time
 import datetime
 
-version_number = 0.5
+version_number = 0.6
 topiclist = []
 numclients = 0
 rxcount = 0
@@ -114,15 +113,13 @@ def on_message(mosq, userdata, msg):
                 topiclist.append(t[2])
                 numclients = numclients + 1
                 offset = topiclist.index(t[2])
-                stats_txt.addstr(offset, 3 - len(str(numclients)), str(numclients))
-                stats_txt.addstr(offset, 4, t[2])   
-
+                stats_txt.addstr(offset, num_col-1, str(numclients).rjust(num_len))
+                stats_txt.addstr(offset, name_col-1, t[2].ljust(name_len))   
                 stdscr.addstr(0,60,"Client count %s" % numclients, curses.A_REVERSE) 
             else:
                 offset = topiclist.index(t[2])
             for i in items:
                 if i.topic_tail == t[3]:
-                    #stats_txt.addstr(offset, i.x, "                                        "[1:i.length])
                     if i.length + 1 > len(msg.payload) and i.rl == 'r':
                         stats_txt.addstr(offset, i.x-1, str(msg.payload).rjust(i.length))      
                     else:
@@ -274,10 +271,10 @@ header_txt.addstr(0, ping_col, "Ping".ljust(ping_len), curses.A_UNDERLINE)
 header_txt.addstr(0, extip_col, "External Ip".ljust(extip_len), curses.A_UNDERLINE)
 header_txt.addstr(0, locip_col, "Local IP".ljust(locip_len), curses.A_UNDERLINE)
 header_txt.addstr(0, pid_col, "PID".ljust(pid_len), curses.A_UNDERLINE)
-header_txt.addstr(0, startts_col, "Start Ts".ljust(startts_len), curses.A_UNDERLINE)
+header_txt.addstr(0, startts_col, "Start Timestamp".ljust(startts_len), curses.A_UNDERLINE)
 header_txt.addstr(0, con_col, "Con.".ljust(con_len), curses.A_UNDERLINE)
-header_txt.addstr(0, conts_col, "Connect Ts".ljust(conts_len), curses.A_UNDERLINE)
-header_txt.addstr(0, dists_col, "Disconnect Ts".ljust(dists_len), curses.A_UNDERLINE)
+header_txt.addstr(0, conts_col, "Connect Timestamp".ljust(conts_len), curses.A_UNDERLINE)
+header_txt.addstr(0, dists_col, "Disconnect Timestamp".ljust(dists_len), curses.A_UNDERLINE)
 header_txt.refresh(0, 0, 2, 1, 2, curses.COLS-3)
 stats.noutrefresh()
 curses.doupdate()
