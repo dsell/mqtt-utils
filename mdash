@@ -38,11 +38,12 @@ message_col = topic_size
 items = []
 
 class item:
-    def __init__(self, topic, y, x, length):
+    def __init__(self, topic, y, x, length, rl = 'r'):
         self.topic = topic
         self.y = y
         self.x = x
         self.length = length
+        self.rl = rl
 
 
 #  array topic x y erase-len
@@ -105,13 +106,12 @@ def on_message(mosq, userdata, msg):
 
     for i in items:
         if i.topic == msg.topic:
-            stdscr.addstr(i.y, i.x, "                           "[1:i.length])
-            if i.length + 1 > len(msg.payload):
-                stdscr.addstr(i.y, i.x + i.length - len(msg.payload), msg.payload)        
+            if i.length + 1 > len(msg.payload) and i.rl == 'r':
+                stats_txt.addstr(offset, i.x-1, str(msg.payload).rjust(i.length))        
     if msg.topic == "$SYS/broker/uptime":
             t = msg.payload.split(" ")
             uptime = datetime.timedelta(seconds=int(t[0]))
-            uptime_text = str(uptime)
+            uptime_text = str(uptime).rjust(12)
             stdscr.addstr(14,other_col+other_tab+2, uptime_text)
     curses.doupdate()
 
