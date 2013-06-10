@@ -46,8 +46,6 @@ class item:
         self.rl = rl
 
 
-#  array topic x y erase-len
-
 def usage():
     print "usage: mdash [options]"  #[hostname[:port]] [topics]" 
     print "Watch topics change from an MQTT broker."
