@@ -80,5 +80,5 @@ client.unsubscribe(topics)
 for t in topiclist:
     print "Erasing topic: ", t
     client.publish(t, "", retain = True)    
-
+    client.loop(0)
 

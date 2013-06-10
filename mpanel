@@ -100,16 +100,19 @@ def get_client():
     client_win.addstr(1, 1, "Enter client number:")
     client_win.addstr(17, 1, "q - To exit help.")
     client_win.noutrefresh()
+    stdscr.nooutrefresh()
     curses.doupdate()
-    while True:
-        key = stdscr.getch()
-        if key == ord("q"):
-            break
+    curses.nocbreak()
+    curses.echo()
+    client_num = stdscr.getstr(24,0, 5)
+    curses.cbreak()
+    curses.noecho()
     client_win.erase()
     del client_win
     stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
     stdscr.nooutrefresh()
     curses.doupdate()
+    return client_num
 
 
 def on_connect(mosq, userdata, rc):
@@ -326,8 +329,9 @@ while client.loop(0) == 0:
         client.publish("/clients/global/ping", "request")
     if key == ord("i"):
         client.publish("/clients/global/identify", "request")
-    if key == ord("i"):
-        client.publish("/clients/" + client + "/command", "reload")
+    if key == ord("r"):
+        n = get_client()
+#        client.publish("/clients/" + client + "/command", "reload")
     if key == curses.KEY_DOWN:
         pos = pos + 1
         if pos > numclients:
