@@ -13,7 +13,21 @@ import mosquitto
 
 topiclist = []
 broker = "127.0.0.1"
+port = 1883
 topics = "/#"
+
+
+def usage():
+    print "usage: mprune [options]"  #[hostname[:port]] [topics]" 
+    print "Delete retained topics from an MQTT broker."
+    print 
+    print "   -u --hostname HOSTNAME set hostname for broker (default localhost)"
+    print "   -p --port PORT         set port for mqtt broker (default 1883)"
+    print "   -t --topic TOPIC       set topic tree to delete"
+    print "   -h --help              show this help information"
+    print "   -v --version           show version information"
+    print "By Dennis Sell -- 2013"
+
 
 def on_connect(mosq, userdata, rc):
     print "Connected to %s", broker
@@ -22,11 +36,31 @@ def on_message(mosq, userdata, msg):
     if msg.topic not in topiclist and msg.retain:
         topiclist.append(msg.topic)
 
-if len(sys.argv) == 2:
-    broker = sys.argv[1]
-if len(sys.argv) == 3:
-    broker = sys.argv[1]
-    topics= sys.argv[2]
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], 'u:p:t:hv', ['hostname=', 'port', 'topic', 'help', 'version'])
+except getopt.GetoptError as err:
+    print str(err)
+    usage()
+    sys.exit(2)
+
+
+for opt, arg in opts:
+    if opt in ('-h', '--help'):
+        usage()
+        sys.exit(2)
+    if opt in ('-v', '--version'):
+        version()
+        sys.exit(2)
+    elif opt in ('-u', '--hostname'):
+        broker = arg
+    elif opt in ('-p', '--port'):
+        port = arg
+    elif opt in ('-t', '--topic'):
+        topic = arg
+    else:
+        usage()
+        sys.exit(2)
 
 client = mosquitto.Mosquitto()
 client.on_message = on_message
