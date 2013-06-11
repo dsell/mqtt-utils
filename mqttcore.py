@@ -23,10 +23,9 @@ import logging
 import signal
 from config import Config
 import datetime
-from daemon import daemon_version
 
 
-COREVERSION = 0.7
+COREVERSION = 0.8
 
 
 class MQTTClientCore:
@@ -51,9 +50,11 @@ class MQTTClientCore:
         self.mqtttimeout = 60    # seconds
 
         if ('single' == self.clienttype):
+            from daemon import daemon_version
             self.clientname = appname
             self.persist = True
         elif ('multi' == self.clienttype):
+            from daemon import daemon_version
             self.persist = True
             self.clientname = appname + "[" + socket.gethostname() + "]"
         elif ('app' == self.clienttype):
@@ -61,6 +62,7 @@ class MQTTClientCore:
                               str(os.getpid()) + "]"
             self.persist = False
         else: # catchall
+            from daemon import daemon_version
             self.clientname = appname
             self.persist = False
         self.clientbase = "/clients/" + self.clientname + "/"
@@ -126,7 +128,8 @@ class MQTTClientCore:
         self.mqttc.publish(self.clientbase + "version",
                             self.clientversion, qos=1, retain=self.persist)
         self.mqttc.publish(self.clientbase + "core-version", self.coreversion, qos=1, retain=self.persist)
-        self.mqttc.publish(self.clientbase + "daemon-version", daemon_version(), qos=1, retain=self.persist)
+        if ('app' != self.clienttype):
+            self.mqttc.publish(self.clientbase + "daemon-version", daemon_version(), qos=1, retain=self.persist)
 #        p = subprocess.Popen("curl ifconfig.me/forwarded", shell=True,
         p = subprocess.Popen("ip -f inet  addr show | tail -n 1 | cut -f 6 -d' ' | cut -f 1 -d'/'", shell=True,
                               stdout=subprocess.PIPE)
