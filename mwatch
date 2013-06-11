@@ -86,6 +86,7 @@ def show_help():
     help_win.erase()
     del help_win
     stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+    header_txt.refresh(0, 0, 2, 1, 2, curses.COLS-3)
     stdscr.nooutrefresh()
     curses.doupdate()
 
