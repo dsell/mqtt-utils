@@ -105,7 +105,7 @@ def on_message(mosq, userdata, msg):
     for i in items:
         if i.topic == msg.topic:
             if i.length + 1 > len(msg.payload) and i.rl == 'r':
-                stats_txt.addstr(offset, i.x-1, str(msg.payload).rjust(i.length))        
+                stdscr.addstr(i.y, i.x-1, str(msg.payload).rjust(i.length))        
     if msg.topic == "$SYS/broker/uptime":
             t = msg.payload.split(" ")
             uptime = datetime.timedelta(seconds=int(t[0]))
@@ -219,19 +219,19 @@ messages_col = 32
 messages_tab = 10
 other_col = 62
 other_tab = 12
-sent1m_col = 19
-rec1m_col = 31
-sent5m_col = 42
-rec5m_col = 56
-sent15m_col = 67
+sent1m_col = 18
+rec1m_col = 32
+sent5m_col = 41
+rec5m_col = 55
+sent15m_col = 64
 rec15m_col = 79
-senttot_col = 88
-rectot_col = 104
+senttot_col = 89
+rectot_col = 105
 
 
 stdscr.addstr(3, 1, "Version:", curses.A_UNDERLINE)
-stdscr.addstr(5, 1, "Load:                 Per 1 Min.             Per 5 Min.               Per 15 Min.              Total")
-stdscr.addstr(6, 1, "                    Sent      Received     Sent        Received     Sent      Received       Sent      Received", curses.A_UNDERLINE)
+stdscr.addstr(5, 1, "Load:                 Per 1 Min.             Per 5 Min.             Per 15 Min.                  Total")
+stdscr.addstr(6, 1, "                    Sent      Received     Sent      Received     Sent       Received        Sent      Received", curses.A_UNDERLINE)
 stdscr.addstr(7, 1, "Bytes:")
 stdscr.addstr(8, 1, "Messages:")
 stdscr.addstr(9, 1, "Published:")
@@ -312,8 +312,8 @@ items.append(item("$SYS/broker/clients/total", 16, clients_col+clients_tab, 8))
 items.append(item("$SYS/broker/clients/expired", 17,clients_col+clients_tab, 8))
 items.append(item("$SYS/broker/clients/maximum", 18, clients_col+clients_tab, 8))
 
-items.append(item("$SYS/broker/heap/current size", 15, other_col+other_tab, 8))
-items.append(item("$SYS/broker/heap/maximum size", 16, other_col+other_tab, 8))
+items.append(item("$SYS/broker/heap/current size", 15, other_col+other_tab, 10))
+items.append(item("$SYS/broker/heap/maximum size", 16, other_col+other_tab, 10))
 
 
 # main loop
