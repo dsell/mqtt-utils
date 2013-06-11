@@ -8,6 +8,10 @@
 
 
 
+__author__ = "Dennis Sell"
+__copyright__ = "Copyright (C) Dennis Sell"
+
+
 #BUGS
 # resizing terminal crashes.  Possibly some curses/mosquitto interaction.
 
@@ -21,7 +25,8 @@ from curses.ascii import isprint
 import time
 import datetime
 
-version_number = 0.7
+
+version_number = 0.8
 topiclist = []
 numclients = 0
 rxcount = 0
@@ -35,6 +40,7 @@ count_col = topic_size
 timestamp_col = topic_size
 message_col = topic_size
 items = []
+
 
 class item:
     def __init__(self, topic_tail, x, length, rl = 'l'):
@@ -63,7 +69,7 @@ def version():
 def show_help():
     help_cols = curses.COLS/2
     help_lines = curses.LINES/2
-    help_win = curses.newwin(24, 50, help_lines-12, help_cols-25)
+    help_win = curses.newwin(24, 70, help_lines-12, help_cols-35)
     help_win.box()
     help_win.addstr(1, 1, "Key Commands", curses.A_UNDERLINE)
     help_win.addstr(3, 1, "[Home]        - Jump to top left")
@@ -75,9 +81,9 @@ def show_help():
     help_win.addstr(9, 1, "[Down Arrow]  - Scroll down")
     help_win.addstr(10, 1, "[Page Up]     - Page up")
     help_win.addstr(11, 1, "[Page Down]   - Page down")
-    help_win.addstr(13, 1, "p             - Send a ping request")
-    help_win.addstr(14, 1, "i             - Send an identify request")
-    help_win.addstr(15, 1, "r             - Reload client settings")
+    help_win.addstr(13, 1, "p             - Send a ping request globally")
+    help_win.addstr(14, 1, "i             - Send an identify request globally")
+    help_win.addstr(15, 1, "R             - Reload client settings for a specific client")
     help_win.addstr(17, 1, "q - To exit help.")
     help_win.noutrefresh()
     curses.doupdate()
@@ -88,31 +94,41 @@ def show_help():
     help_win.erase()
     del help_win
     stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+    header_txt.refresh(0, 0, 2, 1, 2, curses.COLS-3)
     stdscr.nooutrefresh()
     curses.doupdate()
 
 
-def get_client():
+def get_client(prompt):
     client_cols = curses.COLS/2
     client_lines = curses.LINES/2
-    client_win = curses.newwin(24, 50, client_lines-12, client_cols-25)
+    client_win = curses.newwin(7, 50, client_lines-12, client_cols-25)
     client_win.box()
-    client_win.addstr(1, 1, "Enter client number:")
-    client_win.addstr(17, 1, "q - To exit help.")
+    client_win.addstr(1, 1, prompt)
+    client_win.addstr(3, 1, "Enter client number:")
+    client_win.addstr(5, 1, "0 - For none")
     client_win.noutrefresh()
     stdscr.nooutrefresh()
     curses.doupdate()
-    curses.nocbreak()
     curses.echo()
-    client_num = stdscr.getstr(24,0, 5)
-    curses.cbreak()
+    client_win.addstr(3, 22, "    ", curses.A_UNDERLINE)
+    client_num = client_win.getstr(3, 22)
     curses.noecho()
     client_win.erase()
     del client_win
     stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+    header_txt.refresh(0, 0, 2, 1, 2, curses.COLS-3)
     stdscr.nooutrefresh()
     curses.doupdate()
-    return client_num
+    if client_num == '0':
+        ret = 99999
+    elif client_num.isdigit():
+        ret = int(client_num)  - 1
+        if ret < 0:
+            ret = 99999
+    else:
+        ret = 99999
+    return ret
 
 
 def on_connect(mosq, userdata, rc):
@@ -327,11 +343,23 @@ while client.loop(0) == 0:
         show_help()
     if key == ord("p"):
         client.publish("/clients/global/ping", "request")
+    if key == ord("P"):
+        n = get_client("Ping a Client")
+        if n != 99999 and n < len(topiclist):
+            clienttopic = topiclist[n]
+            client.publish("/clients/" + clienttopic + "/ping", "request")
     if key == ord("i"):
         client.publish("/clients/global/identify", "request")
-    if key == ord("r"):
-        n = get_client()
-#        client.publish("/clients/" + client + "/command", "reload")
+    if key == ord("I"):
+        n = get_client("Identify a Client")
+        if n != 99999 and n < len(topiclist):
+            clienttopic = topiclist[n]
+            client.publish("/clients/" + clienttopic + "/identify", "request")
+    if key == ord("R"):
+        n = get_client("Reset a Client")
+        if n != 99999 and n < len(topiclist):
+            clienttopic = topiclist[n]
+            client.publish("/clients/" + clienttopic + "/command", "reload")
     if key == curses.KEY_DOWN:
         pos = pos + 1
         if pos > numclients:
