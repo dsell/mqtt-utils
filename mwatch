@@ -8,6 +8,11 @@
 
 
 
+
+__author__ = "Dennis Sell"
+__copyright__ = "Copyright (C) Dennis Sell"
+
+
 #BUGS
 # resizing terminal crashes.  Possibly some curses/mosquitto interaction.
 
@@ -20,8 +25,10 @@ import curses
 from curses.ascii import isprint
 import time
 import datetime
+import mqttcore
 
-version_number = 0.6
+
+version_number = 0.7
 topiclist = []
 count = []
 numtopics = 0
@@ -310,69 +317,71 @@ curses.doupdate()
 # main loop
 while client.loop(0) == 0:
     key = stdscr.getch()
-    if key == ord("q"):
+    if key == -1:
+        pass
+    elif key == ord("q"):
         break
-    if key == ord("?"):
+    elif key == ord("?"):
         show_help()
-    if key == curses.KEY_DOWN:
+    elif key == curses.KEY_DOWN:
         pos = pos + 1
         if pos > numtopics:
             pos = numtopics
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
         header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
-    if key == curses.KEY_UP:
+    elif key == curses.KEY_UP:
         pos = pos - 1
         if pos < 0:
             pos = 0
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
         header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
-    if key == curses.KEY_NPAGE:
+    elif key == curses.KEY_NPAGE:
         pos = pos + page - 2
         if pos > numtopics:
             pos = numtopics
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
         header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
-    if key == curses.KEY_PPAGE:
+    elif key == curses.KEY_PPAGE:
         pos = pos - page + 2
         if pos < 0:
             pos = 0
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
         header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
-    if key == curses.KEY_LEFT:
+    elif key == curses.KEY_LEFT:
         col = col - 1
         if col < 0:
             col = 0
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
         header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
-    if key == curses.KEY_RIGHT:
+    elif key == curses.KEY_RIGHT:
         col = col + 1
         if col > 2003-curses.COLS:
             col = 2003-curses.COLS
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
         header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
-    if key == curses.KEY_HOME:
+    elif key == curses.KEY_HOME:
         pos = 0
         col = 0
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
         header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
-    if key == ord("b"):
+    elif key == ord("b"):
         col = 0
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
         header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
-    if key == ord("e"):
+    elif key == ord("e"):
         col = 2003 - curses.COLS
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
         header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
-    if key == curses.KEY_RESIZE:    #Resizing the terminal screen crashes this program.  
+    elif key == curses.KEY_RESIZE:    #Resizing the terminal screen crashes this program.  
         l, c = getTerminalSize()    #It seems to be something to do with calling the mosquitto library in the above while loop.  
         if c > 50:                  #Redrawing belongs here if the problem gets solved.
             stdscr.addstr(0, curses.COLS-20, "Col: " + str(c) + "  Lines: " + str(l))
