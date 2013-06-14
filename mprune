@@ -8,6 +8,7 @@
 
 
 import sys
+import getopt
 import mosquitto
 
 
@@ -30,7 +31,7 @@ def usage():
 
 
 def on_connect(mosq, userdata, rc):
-    print "Connected to %s", broker
+    print "Connected to ", broker
 
 def on_message(mosq, userdata, msg):
     if msg.topic not in topiclist and msg.retain:
@@ -57,7 +58,7 @@ for opt, arg in opts:
     elif opt in ('-p', '--port'):
         port = arg
     elif opt in ('-t', '--topic'):
-        topic = arg
+        topics = arg
     else:
         usage()
         sys.exit(2)
@@ -69,7 +70,7 @@ client.connect(broker)
 client.subscribe(topics)
 
 
-timer = 3000        #Crude method of waiting for subscriptions to come in.  This could be improved.
+timer = 30000        #Crude method of waiting for subscriptions to come in.  This could be improved.
 print "Collecting topics"
 while timer > 0:
     client.loop(0)
