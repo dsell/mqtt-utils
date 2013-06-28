@@ -36,7 +36,7 @@ rxcount = 0
 pos = 0
 col = 0
 topic_col = 0
-topic_size = 60
+topic_size = 65
 retained_col = topic_size
 qos_col = topic_size
 count_col = topic_size
@@ -73,17 +73,18 @@ def show_help():
     help_win.box()
     help_win.addstr(1, 1, "Key Commands", curses.A_UNDERLINE)
     help_win.addstr(3, 1, "[Home]        - Jump to top left")
-    help_win.addstr(4, 1, "b             - Jump to begining of line")
-    help_win.addstr(5, 1, "e             - Jump to end of line")
-    help_win.addstr(6, 1, "[Right Arrow] - Scroll to right")
-    help_win.addstr(7, 1, "[Left Arrow]  - Scroll to left")
-    help_win.addstr(8, 1, "[Up Arrow]    - Scroll up")
-    help_win.addstr(9, 1, "[Down Arrow]  - Scroll down")
-    help_win.addstr(10, 1, "[Page Up]     - Page up")
-    help_win.addstr(11, 1, "[Page Down]   - Page down")
-    help_win.addstr(13, 1, "Retained flag == True implies the message was")
-    help_win.addstr(14, 1, "sent before mwatch connected to the broker.  ")
-    help_win.addstr(16, 1, "q - To exit help.")
+    help_win.addstr(4, 1, "[END]         - Jump to bottom of list")
+    help_win.addstr(5, 1, "b             - Jump to begining of line")
+    help_win.addstr(6, 1, "e             - Jump to end of line")
+    help_win.addstr(7, 1, "[Right Arrow] - Scroll to right")
+    help_win.addstr(8, 1, "[Left Arrow]  - Scroll to left")
+    help_win.addstr(9, 1, "[Up Arrow]    - Scroll up")
+    help_win.addstr(10, 1, "[Down Arrow]  - Scroll down")
+    help_win.addstr(11, 1, "[Page Up]     - Page up")
+    help_win.addstr(12, 1, "[Page Down]   - Page down")
+    help_win.addstr(14, 1, "Retained flag == True implies the message was")
+    help_win.addstr(15, 1, "sent before mwatch connected to the broker.  ")
+    help_win.addstr(17, 1, "q - To exit help.")
     help_win.noutrefresh()
     curses.doupdate()
     while True:
@@ -368,6 +369,11 @@ while client.loop(0) == 0:
     elif key == curses.KEY_HOME:
         pos = 0
         col = 0
+        stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
+        header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
+        curses.doupdate()
+    elif key == curses.KEY_END:
+        pos = numtopics - page + 4
         stats_txt.refresh(pos, col, 3,2, page,curses.COLS-3)
         header_txt.refresh(0, col, 2, 1, 2, curses.COLS-3)
         curses.doupdate()
