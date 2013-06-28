@@ -8,6 +8,10 @@
 
 
 
+__author__ = "Dennis Sell"
+__copyright__ = "Copyright (C) Dennis Sell"
+
+
 #BUGS
 # resizing terminal crashes.  Possibly some curses/mosquitto interaction.
 
@@ -230,8 +234,8 @@ rectot_col = 105
 
 
 stdscr.addstr(3, 1, "Version:", curses.A_UNDERLINE)
-stdscr.addstr(5, 1, "Load:                 Per 1 Min.             Per 5 Min.             Per 15 Min.                  Total")
-stdscr.addstr(6, 1, "                    Sent      Received     Sent      Received     Sent       Received        Sent      Received", curses.A_UNDERLINE)
+stdscr.addstr(5, 1, "Load:                 Per 1 Min.             Per 5 Min.             Per 15 Min.                   Total")
+stdscr.addstr(6, 1, "                    Sent      Received     Sent      Received     Sent       Received        Sent        Received", curses.A_UNDERLINE)
 stdscr.addstr(7, 1, "Bytes:")
 stdscr.addstr(8, 1, "Messages:")
 stdscr.addstr(9, 1, "Published:")
@@ -271,7 +275,7 @@ items.append(item("$SYS/broker/load/bytes/received/15min", 7, rec15m_col, 8))
 items.append(item("$SYS/broker/load/bytes/sent/1min", 7, sent1m_col, 8))
 items.append(item("$SYS/broker/load/bytes/sent/5min", 7, sent5m_col, 8))
 items.append(item("$SYS/broker/load/bytes/sent/15min", 7, sent15m_col, 8))
-items.append(item("$SYS/broker/bytes/received", 7, rectot_col, 8))
+items.append(item("$SYS/broker/bytes/received", 7, rectot_col, 10))
 items.append(item("$SYS/broker/bytes/sent", 7, senttot_col, 10))
 
 items.append(item("$SYS/broker/load/messages/received/1min", 8, rec1m_col, 8))
@@ -280,7 +284,7 @@ items.append(item("$SYS/broker/load/messages/received/15min", 8, rec15m_col, 8))
 items.append(item("$SYS/broker/load/messages/sent/1min", 8, sent1m_col, 8))
 items.append(item("$SYS/broker/load/messages/sent/5min", 8, sent5m_col, 8))
 items.append(item("$SYS/broker/load/messages/sent/15min", 8, sent15m_col, 8))
-items.append(item("$SYS/broker/messages/received", 8, rectot_col, 8))
+items.append(item("$SYS/broker/messages/received", 8, rectot_col, 10))
 items.append(item("$SYS/broker/messages/sent", 8, senttot_col, 10))
 
 items.append(item("$SYS/broker/load/publish/received/1min", 9, rec1m_col, 8))
@@ -289,7 +293,7 @@ items.append(item("$SYS/broker/load/publish/received/15min", 9, rec15m_col, 8))
 items.append(item("$SYS/broker/load/publish/sent/1min", 9, sent1m_col, 8))
 items.append(item("$SYS/broker/load/publish/sent/5min", 9, sent5m_col, 8))
 items.append(item("$SYS/broker/load/publish/sent/15min", 9, sent15m_col, 8))
-items.append(item("$SYS/broker/publish/messages/received", 9, rectot_col, 8))
+items.append(item("$SYS/broker/publish/messages/received", 9, rectot_col, 10))
 items.append(item("$SYS/broker/publish/messages/sent", 9, senttot_col, 10))
 
 items.append(item("$SYS/broker/load/connections/1min", 10, sent1m_col+5, 8))
