@@ -7,6 +7,10 @@
 #
 
 
+__author__ = "Dennis Sell"
+__copyright__ = "Copyright (C) Dennis Sell"
+
+
 import sys
 import getopt
 import mosquitto
@@ -70,7 +74,7 @@ client.connect(broker)
 client.subscribe(topics)
 
 
-timer = 30000        #Crude method of waiting for subscriptions to come in.  This could be improved.
+timer = 300000        #Crude method of waiting for subscriptions to come in.  This could be improved.
 print "Collecting topics"
 while timer > 0:
     client.loop(0)
@@ -81,5 +85,5 @@ client.unsubscribe(topics)
 for t in topiclist:
     print "Erasing topic: ", t
     client.publish(t, "", retain = True)    
-    client.loop(0)
+    client.loop(10)
 
