@@ -12,6 +12,7 @@ __copyright__ = "Copyright (C) Dennis Sell"
 
 
 import sys
+import signal
 import getopt
 import mosquitto
 
@@ -73,12 +74,17 @@ client.on_connect = on_connect
 client.connect(broker)
 client.subscribe(topics)
 
+def alarm_handler(signal, frame):
+    collectstate = False
+    flushstate = False
 
-timer = 300000        #Crude method of waiting for subscriptions to come in.  This could be improved.
+signal.signal(signal.SIGALRM, alarm_handler)
+signal.alarm(5) # generate SIGALRM after 5 secs
+
+collect_state = True
 print "Collecting topics"
-while timer > 0:
+while collect_state:
     client.loop(0)
-    timer = timer -1
     pass
 
 client.unsubscribe(topics)
@@ -86,4 +92,11 @@ for t in topiclist:
     print "Erasing topic: ", t
     client.publish(t, "", retain = True)    
     client.loop(10)
+
+signal.alarm(2) # generate SIGALRM after 2 secs
+
+flush_state = True
+while flush_state:
+    client.loop()
+
 
