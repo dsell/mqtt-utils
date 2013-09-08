@@ -178,7 +178,7 @@ for opt, arg in opts:
     elif opt in ('-u', '--hostname'):
         broker = arg
     elif opt in ('-p', '--port'):
-        port = arg
+        port = int(arg)
     else:
         usage()
         sys.exit(2)
@@ -188,18 +188,18 @@ for opt, arg in opts:
 client = mosquitto.Mosquitto()
 client.on_message = on_message
 client.on_connect = on_connect
-client.connect(broker)
+client.connect(broker, port)
 client.subscribe(topics)
 
 # initialize curses
 stdscr = curses.initscr()
-if curses.COLS < 95:
+if curses.COLS < 116:
     curses.endwin()
-    print "mwatch requires a minimum terminal width of 95 columns."    
+    print "mwatch requires a minimum terminal width of 116 columns."    
     sys.exit(2)
-if curses.LINES < 7:
+if curses.LINES < 24:
     curses.endwin()
-    print "mwatch requires a minimum terminal heigth of 7 rows."    
+    print "mwatch requires a minimum terminal heigth of 24 rows."    
     sys.exit(2)
 stdscr.nodelay(1)
 curses.curs_set(0)
