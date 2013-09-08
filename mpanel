@@ -228,7 +228,7 @@ for opt, arg in opts:
     elif opt in ('-u', '--hostname'):
         broker = arg
     elif opt in ('-p', '--port'):
-        port = arg
+        port = int(arg)
     elif opt in ('-t', '--topics'):
         topics = arg
     else:
@@ -240,7 +240,7 @@ for opt, arg in opts:
 client = mosquitto.Mosquitto()
 client.on_message = on_message
 client.on_connect = on_connect
-client.connect(broker)
+client.connect(broker, port)
 client.subscribe(topics)
 
 # initialize curses
