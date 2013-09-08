@@ -23,6 +23,7 @@ import logging
 import signal
 from config import Config
 import datetime
+from daemon import daemon_version
 
 
 COREVERSION = 0.8
@@ -67,20 +68,7 @@ class MQTTClientCore:
             self.persist = False
         self.clientbase = "/clients/" + self.clientname + "/"
         LOGFORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        
-        read_configs()
 
-        logging.basicConfig(filename=self.logfile, level=self.loglevel,
-                            format=LOGFORMAT)
-
-        #create an mqtt client
-        self.mqttc = mosquitto.Mosquitto(self.clientname, clean_session=self.clean_session)
-
-        #trap kill signals including control-c
-        signal.signal(signal.SIGTERM, self.cleanup)
-        signal.signal(signal.SIGINT, self.cleanup)
-
-    def read_configs():
         #TODO  need to deal with no config file existing!!!
         #read in configuration file
         f = self.configfile
@@ -120,6 +108,16 @@ class MQTTClientCore:
         except:
             self.password = None
 
+        logging.basicConfig(filename=self.logfile, level=self.loglevel,
+                            format=LOGFORMAT)
+
+        #create an mqtt client
+        self.mqttc = mosquitto.Mosquitto(self.clientname, clean_session=self.clean_session)
+
+        #trap kill signals including control-c
+        signal.signal(signal.SIGTERM, self.cleanup)
+        signal.signal(signal.SIGINT, self.cleanup)
+
     def getifip(ifn):
         # print ip
         import socket, fcntl, struct
@@ -155,7 +153,7 @@ class MQTTClientCore:
     def on_connect(self, mself, obj, rc):
         self.mqtt_connected = True
         self.connectcount = self.connectcount+1
-        self.connecttime = datetime.datetime.now()
+        self.connecttime=datetime.datetime.now()
         print "MQTT Connected"
         logging.info("MQTT connected")
         self.mqttc.subscribe(self.clientbase + "ping", qos=2)
@@ -176,16 +174,9 @@ class MQTTClientCore:
             ( msg.payload == "request" ))):
             self.mqttc.publish(self.clientbase + "ping", "response", qos=1,
                                retain=0)
-        if ((( msg.topic == self.clientbase + "identify" ) and
-            ( msg.payload == "request" )) or
-            (( msg.topic == "/clients/global/identify" ) and
-            ( msg.payload == "request" ))):
+        if (( msg.topic == "/clients/global/identify" ) and
+            ( msg.payload == "request" )):
             self.identify()
-        if ((( msg.topic == self.clientbase + "reload" ) and
-            ( msg.payload == "request" )) or
-            (( msg.topic == "/clients/global/reload" ) and
-            ( msg.payload == "request" ))):
-            self.read_configs()
 
     def on_log(self, mself, obj, level, buffer):
         logging.info(buffer)
