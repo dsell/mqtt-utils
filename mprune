@@ -21,6 +21,8 @@ topiclist = []
 broker = "127.0.0.1"
 port = 1883
 topics = "/#"
+connected = False
+
 
 
 def usage():
@@ -36,11 +38,14 @@ def usage():
 
 
 def on_connect(mosq, userdata, rc):
+    global connected
+    connected = True
     print "Connected to ", broker
 
 def on_message(mosq, userdata, msg):
     if msg.topic not in topiclist and msg.retain:
         topiclist.append(msg.topic)
+        print "   " + msg.topic
 
 
 try:
@@ -61,7 +66,7 @@ for opt, arg in opts:
     elif opt in ('-u', '--hostname'):
         broker = arg
     elif opt in ('-p', '--port'):
-        port = arg
+        port = int(arg)
     elif opt in ('-t', '--topic'):
         topics = arg
     else:
@@ -71,12 +76,19 @@ for opt, arg in opts:
 client = mosquitto.Mosquitto()
 client.on_message = on_message
 client.on_connect = on_connect
-client.connect(broker)
+client.connect(broker, port)
 client.subscribe(topics)
 
 def alarm_handler(signal, frame):
-    collectstate = False
-    flushstate = False
+    global collect_state, flush_state
+    collect_state = False
+    flush_state = False
+
+
+print "Waiting for connection"
+while not connected:
+    client.loop(0)
+
 
 signal.signal(signal.SIGALRM, alarm_handler)
 signal.alarm(5) # generate SIGALRM after 5 secs
@@ -88,15 +100,16 @@ while collect_state:
     pass
 
 client.unsubscribe(topics)
+print "Erasing topics"
 for t in topiclist:
-    print "Erasing topic: ", t
+    print "   Erasing topic: ", t
     client.publish(t, "", retain = True)    
-    client.loop(10)
+    client.loop(0)
 
 signal.alarm(2) # generate SIGALRM after 2 secs
 
 flush_state = True
 while flush_state:
-    client.loop()
+    client.loop(0)
 
 
