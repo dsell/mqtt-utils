@@ -26,7 +26,7 @@ import datetime
 from daemon import daemon_version
 
 
-COREVERSION = 0.8
+COREVERSION = 0.9
 
 
 class MQTTClientCore:
@@ -124,6 +124,10 @@ class MQTTClientCore:
 
         sck = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         return socket.inet_ntoa(fcntl.ioctl(sck.fileno(),0x8915,struct.pack('256s', ifn[:15]))[20:24])
+
+    def status(self, text):
+        self.mqttc.publish(self.basetopic + "/status", text, qos=0, retain = False)
+        logging.info(text)
 
     def identify(self):
         self.mqttc.publish(self.clientbase + "version",
