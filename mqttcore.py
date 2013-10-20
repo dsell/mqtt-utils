@@ -7,7 +7,7 @@
 #
 #
 
-
+#TODO!!!!!!!!!!!!!!!HACKED VERSION FOR DASHBOARD!!!!!!!!!!!!!!!!!!!
 __author__ = "Dennis Sell"
 __copyright__ = "Copyright (C) Dennis Sell"
 
@@ -22,12 +22,14 @@ import subprocess
 import logging
 import signal
 from config import Config
+from multiprocessing import Queue
 import datetime
-from daemon import daemon_version
 
 
-COREVERSION = 0.9
+daemon_version = "na"
 
+
+COREVERSION = 0.7
 
 class MQTTClientCore:
     """
@@ -40,22 +42,20 @@ class MQTTClientCore:
         self.starttime=datetime.datetime.now()
         self.connecttime=0 
         self.disconnecttime=0 
-        self.persist = False
         self.mqtt_connected = False
         self.clienttype = clienttype
         self.clean_session = clean_session
         self.clientversion = "unknown"
         self.coreversion = COREVERSION
+        self.q = Queue()
         homedir = os.path.expanduser("~")
         self.configfile = homedir + "/." + appname + '.conf'
         self.mqtttimeout = 60    # seconds
 
         if ('single' == self.clienttype):
-            from daemon import daemon_version
             self.clientname = appname
             self.persist = True
         elif ('multi' == self.clienttype):
-            from daemon import daemon_version
             self.persist = True
             self.clientname = appname + "[" + socket.gethostname() + "]"
         elif ('app' == self.clienttype):
@@ -63,9 +63,7 @@ class MQTTClientCore:
                               str(os.getpid()) + "]"
             self.persist = False
         else: # catchall
-            from daemon import daemon_version
             self.clientname = appname
-            self.persist = False
         self.clientbase = "/clients/" + self.clientname + "/"
         LOGFORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
@@ -112,7 +110,7 @@ class MQTTClientCore:
                             format=LOGFORMAT)
 
         #create an mqtt client
-        self.mqttc = mosquitto.Mosquitto(self.clientname, clean_session=self.clean_session)
+        self.mqttc = mosquitto.Mosquitto(self.clientname, self.clean_session, self.q)
 
         #trap kill signals including control-c
         signal.signal(signal.SIGTERM, self.cleanup)
@@ -125,16 +123,11 @@ class MQTTClientCore:
         sck = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         return socket.inet_ntoa(fcntl.ioctl(sck.fileno(),0x8915,struct.pack('256s', ifn[:15]))[20:24])
 
-    def status(self, text):
-        self.mqttc.publish(self.basetopic + "/status", text, qos=0, retain = False)
-        logging.info(text)
-
     def identify(self):
         self.mqttc.publish(self.clientbase + "version",
                             self.clientversion, qos=1, retain=self.persist)
         self.mqttc.publish(self.clientbase + "core-version", self.coreversion, qos=1, retain=self.persist)
-        if ('app' != self.clienttype):
-            self.mqttc.publish(self.clientbase + "daemon-version", daemon_version(), qos=1, retain=self.persist)
+        self.mqttc.publish(self.clientbase + "daemon-version", daemon_version(), qos=1, retain=self.persist)
 #        p = subprocess.Popen("curl ifconfig.me/forwarded", shell=True,
         p = subprocess.Popen("ip -f inet  addr show | tail -n 1 | cut -f 6 -d' ' | cut -f 1 -d'/'", shell=True,
                               stdout=subprocess.PIPE)
@@ -151,7 +144,6 @@ class MQTTClientCore:
         self.mqttc.publish(self.clientbase + "disconnecttime", str(self.disconnecttime), qos=1, retain=self.persist)
         self.mqttc.publish(self.clientbase + "connecttime", str(self.connecttime), qos=1, retain=self.persist)
         self.mqttc.publish(self.clientbase + "count", self.connectcount, qos=1, retain=self.persist)
-#add broker port connection type?
 
     #define what happens after connection
     def on_connect(self, mself, obj, rc):
@@ -166,7 +158,6 @@ class MQTTClientCore:
 
     def on_disconnect( self, mself, obj, rc ):
         self.disconnecttime=datetime.datetime.now()
-        self.mqtt_connected = False
         logging.info("MQTT disconnected: " + error_string(rc))
         print "MQTT Disconnected"
 
